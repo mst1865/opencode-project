@@ -1,16 +1,7 @@
-export type BlockType = 'text' | 'image' | 'code';
-
-export interface ContentBlock {
-  id: string;
-  type: BlockType;
-  content: string;
-  language?: string;
-}
-
 export interface DocPage {
   id: string;
   title: string;
-  blocks: ContentBlock[];
+  content: string; // 以前是 blocks: ContentBlock[]
   lastUpdated: string;
 }
 

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Edit3, Save } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { BlockEditor } from './components/BlockEditor';
-import type { MenuItem, DocPage, ContentBlock, BlockType } from './types';
+import type { MenuItem, DocPage} from './types';
 
 const INITIAL_MENU: MenuItem[] = [
   { id: 'install', title: 'Opencode 安装说明', type: 'static' },
@@ -24,30 +24,39 @@ const MOCK_PAGES: Record<string, DocPage> = {
     id: 'install',
     title: '安装说明',
     lastUpdated: '2023-10-27',
-    blocks: [
-      { id: 'b1', type: 'text', content: '欢迎使用 Opencode。请按照以下步骤完成环境配置。' },
-      { id: 'b2', type: 'code', content: 'npm install opencode-core --save\ndotnet add package Opencode.Net', language: 'bash' },
-      { id: 'b3', type: 'text', content: '安装完成后，请确保您的 PostgreSQL 数据库连接正常。' }
-    ]
+    // 之前是 blocks: [...]，现在改为 content: "HTML字符串"
+    content: `
+      <h2>欢迎使用 Opencode</h2>
+      <p>请按照以下步骤完成环境配置。</p>
+      <pre class="ql-syntax" spellcheck="false">npm install opencode-core --save
+dotnet add package Opencode.Net</pre>
+      <p>安装完成后，请确保您的 PostgreSQL 数据库连接正常。</p>
+    `
   },
   'usage': {
     id: 'usage',
     title: '核心功能使用',
     lastUpdated: '2023-10-28',
-    blocks: [
-      { id: 'b1', type: 'text', content: 'Opencode 的核心在于其高效的中间件管道。' },
-      { id: 'b2', type: 'image', content: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80' },
-      { id: 'b3', type: 'text', content: '如上图所示，数据流经处理节点。' }
-    ]
+    content: `
+      <p>Opencode 的核心在于其高效的中间件管道。</p>
+      <img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80" alt="示例图片" />
+      <p>如上图所示，数据流经处理节点。</p>
+    `
   },
   'case-1': {
     id: 'case-1',
     title: '电商系统集成案例',
     lastUpdated: '2023-11-01',
-    blocks: [
-      { id: 'b1', type: 'text', content: '在高并发电商场景下，Opencode 能够处理每秒 10k+ 请求。' },
-      { id: 'b2', type: 'code', content: 'public void ConfigureServices(IServiceCollection services)\n{\n    services.AddOpencode(options => \n    {\n        options.UseRedisCache();\n    });\n}', language: 'csharp' }
-    ]
+    content: `
+      <p>在高并发电商场景下，Opencode 能够处理每秒 10k+ 请求。</p>
+      <pre class="ql-syntax" spellcheck="false">public void ConfigureServices(IServiceCollection services)
+{
+    services.AddOpencode(options => 
+    {
+        options.UseRedisCache();
+    });
+}</pre>
+    `
   }
 };
 
@@ -102,7 +111,8 @@ function App() {
         id: newId,
         title: newTitle,
         lastUpdated: new Date().toISOString(),
-        blocks: [{ id: 'init', type: 'text', content: '在此处开始编写您的案例...' }]
+        // 修正：使用 content 字段，并传入初始 HTML
+        content: '<p>在此处开始编写您的案例...</p>' 
       }
     }));
 
@@ -110,35 +120,13 @@ function App() {
     setIsEditing(true);
   };
 
-  const updateBlock = (blockId: string, content: string) => {
-    const updatedBlocks = currentPage.blocks.map(b => 
-      b.id === blockId ? { ...b, content } : b
-    );
+  const updateContent = (newContent: string) => {
     setPages(prev => ({
       ...prev,
-      [activeId]: { ...currentPage, blocks: updatedBlocks }
+      [activeId]: { ...currentPage, content: newContent }
     }));
   };
 
-  const addBlock = (type: BlockType) => {
-    const newBlock: ContentBlock = {
-      id: `blk-${Date.now()}`,
-      type,
-      content: type === 'code' ? '// 代码写在这里' : (type === 'image' ? 'https://via.placeholder.com/600x300' : ''),
-      language: 'javascript'
-    };
-    setPages(prev => ({
-      ...prev,
-      [activeId]: { ...currentPage, blocks: [...currentPage.blocks, newBlock] }
-    }));
-  };
-
-  const removeBlock = (blockId: string) => {
-    setPages(prev => ({
-      ...prev,
-      [activeId]: { ...currentPage, blocks: currentPage.blocks.filter(b => b.id !== blockId) }
-    }));
-  };
 
   const updateTitle = (newTitle: string) => {
      setPages(prev => ({
@@ -194,11 +182,9 @@ function App() {
 
         <div className="flex-1 overflow-y-auto p-4 lg:p-8">
           <BlockEditor 
-            blocks={currentPage.blocks}
+            content={currentPage.content} // 传入 HTML 字符串
             isEditing={isEditing}
-            onUpdateBlock={updateBlock} // 需实现
-            onAddBlock={addBlock} // 需实现
-            onRemoveBlock={removeBlock} // 需实现
+            onUpdate={updateContent}      // 使用新的 updateContent 函数
           />
         </div>
       </main>

@@ -9,7 +9,9 @@ namespace Opencode.Docs.Api.Dto
     {
         public string Id { get; set; }
         public string Title { get; set; }
-        public List<ContentBlockDto> Blocks { get; set; }
         public DateTime LastUpdated { get; set; }
+        // 移除 public List<ContentBlockDto> Blocks { get; set; }
+        // 新增：
+        public string Content { get; set; }
     }
 }

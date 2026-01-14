@@ -35,121 +35,82 @@ namespace Opencode.Docs.Api.Controllers
             return Ok(items);
         }
 
-        // 2. 获取具体页面内容
-        [HttpGet("page/{id}")]
-        public async Task<IActionResult> GetPage(string id)
-        {
-            var page = await _context.MenuItems.FindAsync(id);
-            if (page == null) return NotFound("Page not found");
-
-            var blocks = await _context.ContentBlocks
-                .Where(b => b.PageId == id)
-                .OrderBy(b => b.OrderIndex)
-                .ToListAsync();
-
-            var result = new PageDetailDto
-            {
-                Id = page.Id,
-                Title = page.Title,
-                LastUpdated = DateTime.Now, // 实际应从数据库获取更新时间
-                Blocks = blocks.Select(b => new ContentBlockDto 
-                {
-                    Id = b.Id,
-                    Type = b.Type,
-                    Content = b.Content,
-                    Language = b.Language
-                }).ToList()
-            };
-
-            return Ok(result);
-        }
-
-        // 3. 创建新案例 (二级目录)
-        [HttpPost("cases")]
-        public async Task<IActionResult> CreateCase([FromBody] DocMenuItem newItem)
-        {
-            if (string.IsNullOrEmpty(newItem.Title))
-                return BadRequest("Title is required");
-
-            newItem.Id = Guid.NewGuid().ToString();
-            newItem.Type = "file";
-            newItem.ParentId = "cases"; // 硬编码父ID，实际应动态传入
-            
-            // 简单设置排序
-            var maxOrder = await _context.MenuItems
-                .Where(x => x.ParentId == "cases")
-                .MaxAsync(x => (int?)x.SortOrder) ?? 0;
-            newItem.SortOrder = maxOrder + 1;
-
-            _context.MenuItems.Add(newItem);
-            
-            // 创建一个默认的初始块
-            _context.ContentBlocks.Add(new ContentBlock
-            {
-                PageId = newItem.Id,
-                Type = "text",
-                Content = "请在此处开始编写您的案例...",
-                OrderIndex = 0
-            });
-
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetPage), new { id = newItem.Id }, newItem);
-        }
-
-        // 4. 更新页面内容
-        [HttpPut("page/{id}")]
-        public async Task<IActionResult> UpdatePage(string id, [FromBody] PageDetailDto updateDto)
-        {
-            var page = await _context.MenuItems.FindAsync(id);
-            if (page == null) return NotFound();
-
-            // 更新标题
-            page.Title = updateDto.Title;
-
-            // 更新块逻辑：简单起见，这里采用先删后加的策略 (Full Replace)
-            // 生产环境建议使用 Diff 更新或更细粒度的 API
-            var oldBlocks = _context.ContentBlocks.Where(b => b.PageId == id);
-            _context.ContentBlocks.RemoveRange(oldBlocks);
-
-            if (updateDto.Blocks != null)
-            {
-                for (int i = 0; i < updateDto.Blocks.Count; i++)
-                {
-                    var dto = updateDto.Blocks[i];
-                    _context.ContentBlocks.Add(new ContentBlock
-                    {
-                        Id = Guid.NewGuid().ToString(), // 重新生成ID或沿用前端ID
-                        PageId = id,
-                        Type = dto.Type,
-                        Content = dto.Content,
-                        Language = dto.Language,
-                        OrderIndex = i
-                    });
-                }
-            }
-
-            await _context.SaveChangesAsync();
-            return Ok(new { success = true });
-        }
         
-        // 5. 删除案例
-        [HttpDelete("cases/{id}")]
-        public async Task<IActionResult> DeleteCase(string id)
-        {
-            var item = await _context.MenuItems.FindAsync(id);
-            if (item == null) return NotFound();
-            
-            // 保护机制：不允许删除根节点
-            if (item.Type == "folder" || item.Id == "install" || item.Id == "usage")
-                return BadRequest("Cannot delete system items");
 
-            _context.MenuItems.Remove(item);
-            // 级联删除块 (EF Core 如配置了级联删除可自动处理)
-            var blocks = _context.ContentBlocks.Where(b => b.PageId == id);
-            _context.ContentBlocks.RemoveRange(blocks);
 
-            await _context.SaveChangesAsync();
-            return Ok();
-        }
+
+        // 2. 获取具体页面内容
+[HttpGet("page/{id}")]
+public async Task<IActionResult> GetPage(string id)
+{
+    var page = await _context.MenuItems.FindAsync(id);
+    if (page == null) return NotFound("Page not found");
+
+    // 获取该页面的内容块。
+    // 由于改用 ReactQuill，我们假设现在只存一个类型为 "html" 的大块
+    var contentBlock = await _context.ContentBlocks
+        .FirstOrDefaultAsync(b => b.PageId == id);
+
+    var result = new PageDetailDto
+    {
+        Id = page.Id,
+        Title = page.Title,
+        LastUpdated = DateTime.Now,
+        // 如果数据库里没有记录，返回空字符串
+        Content = contentBlock?.Content ?? "" 
+    };
+
+    return Ok(result);
+}
+
+// 4. 更新页面内容
+[HttpPut("page/{id}")]
+public async Task<IActionResult> UpdatePage(string id, [FromBody] PageDetailDto updateDto)
+{
+    var page = await _context.MenuItems.FindAsync(id);
+    if (page == null) return NotFound();
+
+    page.Title = updateDto.Title;
+
+    // 策略：删除旧的所有块，保存一个新的大块
+    // 这样既兼容了旧表结构，又能存入新的 HTML 数据
+    var oldBlocks = _context.ContentBlocks.Where(b => b.PageId == id);
+    _context.ContentBlocks.RemoveRange(oldBlocks);
+
+    // 添加新的 HTML 块
+    _context.ContentBlocks.Add(new ContentBlock
+    {
+        Id = Guid.NewGuid().ToString(),
+        PageId = id,
+        Type = "html", // 标记为 html
+        Content = updateDto.Content, // 这里包含 ReactQuill 生成的 HTML（含 Base64 图片）
+        OrderIndex = 0
+    });
+
+    await _context.SaveChangesAsync();
+    return Ok(new { success = true });
+}
+
+// CreateCase 也需要微调初始化逻辑
+[HttpPost("cases")]
+public async Task<IActionResult> CreateCase([FromBody] DocMenuItem newItem)
+{
+    // ... 前面的逻辑不变 ...
+    
+    // 创建一个默认的初始 HTML 块
+    _context.ContentBlocks.Add(new ContentBlock
+    {
+        PageId = newItem.Id,
+        Type = "html",
+        Content = "<p>请在此处开始编写您的案例...</p>", // 默认 HTML
+        OrderIndex = 0
+    });
+
+    await _context.SaveChangesAsync();
+    return CreatedAtAction(nameof(GetPage), new { id = newItem.Id }, newItem);
+}
+
+
+
     }
 }

@@ -40,3 +40,4 @@ D:\workSpace\vscode\opencode-project\Server\Opencode.Docs.Api\obj\Debug\netcorea
 D:\workSpace\vscode\opencode-project\Server\Opencode.Docs.Api\obj\Debug\netcoreapp3.1\Opencode.Docs.Api.dll
 D:\workSpace\vscode\opencode-project\Server\Opencode.Docs.Api\obj\Debug\netcoreapp3.1\Opencode.Docs.Api.pdb
 D:\workSpace\vscode\opencode-project\Server\Opencode.Docs.Api\obj\Debug\netcoreapp3.1\Opencode.Docs.Api.genruntimeconfig.cache
+D:\workSpace\vscode\opencode-project\Server\Opencode.Docs.Api\obj\Debug\netcoreapp3.1\Opencode.Docs.Api.csproj.AssemblyReference.cache
