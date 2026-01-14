@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { MenuItem, DocPage } from '../types';
 
 // 根据你的 .NET Core 启动配置调整端口，通常是 5000 或 5001
-const API_BASE_URL = 'http://106.14.243.104:5005/api';
+const API_BASE_URL = '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
