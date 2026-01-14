@@ -92,43 +92,43 @@ public async Task<IActionResult> UpdatePage(string id, [FromBody] PageDetailDto 
 }
 
         // CreateCase 也需要微调初始化逻辑
+        // 3. 创建新案例
         [HttpPost("cases")]
         public async Task<IActionResult> CreateCase([FromBody] DocMenuItem newItem)
         {
+            // 1. 基础校验
             if (string.IsNullOrEmpty(newItem.Title))
                 return BadRequest("Title is required");
 
+            // 2. 补全必要的字段
             newItem.Id = Guid.NewGuid().ToString();
             newItem.Type = "file";
-            newItem.ParentId = "cases";
 
-            // ...省略排序逻辑...
+            // --- 核心修复：指定父级 ID 为 "cases" ---
+            newItem.ParentId = "cases";
+            // -------------------------------------
+
+            // 3. 计算排序 (获取当前 cases 目录下最大的 SortOrder)
+            // 注意：这里也要加上 .Where(x => x.ParentId == "cases")，否则排序会乱
             var maxOrder = await _context.MenuItems
                 .Where(x => x.ParentId == "cases")
                 .MaxAsync(x => (int?)x.SortOrder) ?? 0;
             newItem.SortOrder = maxOrder + 1;
 
-            // --- 修复开始 ---
-
-            // 步骤 A: 先添加菜单项并立即保存
-            // 这样该 ID 就真实存在于数据库中了
+            // 4. 保存菜单项
             _context.MenuItems.Add(newItem);
             await _context.SaveChangesAsync();
 
-            // 步骤 B: 再添加依赖该 ID 的内容块
+            // 5. 创建默认内容块 (使用之前讨论过的方案，分开保存或对象关联均可)
             _context.ContentBlocks.Add(new ContentBlock
             {
-                PageId = newItem.Id, // 现在数据库里肯定有这个 ID 了，不会报错
+                PageId = newItem.Id,
                 Type = "html",
                 Content = "<p>请在此处开始编写您的案例...</p>",
                 OrderIndex = 0
             });
 
-            // 步骤 C: 保存内容块
             await _context.SaveChangesAsync();
-
-            // --- 修复结束 ---
-
             return CreatedAtAction(nameof(GetPage), new { id = newItem.Id }, newItem);
         }
 
