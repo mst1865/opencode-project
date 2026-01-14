@@ -8,7 +8,9 @@ export interface DocPage {
 export interface MenuItem {
   id: string;
   title: string;
-  type: 'static' | 'folder' | 'file';
-  children?: MenuItem[];
+  type: 'folder' | 'file' | 'static';
+  parentId?: string | null; // 新增
+  sortOrder?: number;       // 新增
   isOpen?: boolean;
+  children?: MenuItem[];
 }
