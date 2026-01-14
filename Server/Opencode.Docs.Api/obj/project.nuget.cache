@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "n1HpuxZhPZZPYxjltxNJjLU4vLLtyTN3QiZoN5jjkHHb4SN3jwMMhXrPyOE9xgw4VmFZAd2QlC8NXTAbkwRvIg==",
+  "dgSpecHash": "DmpcbKIDmtdmdRbhHGXCX+WXS4TW/O/JMuebx+Mp/mFg5uXREWuJWVLI6A3N/GFKrL6zMTFBqSK91Eh6uMWVVQ==",
   "success": true,
   "projectFilePath": "D:\\workSpace\\vscode\\opencode-project\\Server\\Opencode.Docs.Api\\Opencode.Docs.Api.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\LaptopUser\\.nuget\\packages\\efcore.namingconventions\\1.1.1\\efcore.namingconventions.1.1.1.nupkg.sha512",
     "C:\\Users\\LaptopUser\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\1.1.1\\microsoft.bcl.asyncinterfaces.1.1.1.nupkg.sha512",
     "C:\\Users\\LaptopUser\\.nuget\\packages\\microsoft.bcl.hashcode\\1.1.1\\microsoft.bcl.hashcode.1.1.1.nupkg.sha512",
     "C:\\Users\\LaptopUser\\.nuget\\packages\\microsoft.csharp\\4.7.0\\microsoft.csharp.4.7.0.nupkg.sha512",

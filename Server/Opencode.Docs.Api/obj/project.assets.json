@@ -2,6 +2,20 @@
   "version": 3,
   "targets": {
     ".NETCoreApp,Version=v3.1": {
+      "EFCore.NamingConventions/1.1.1": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "3.1.1",
+          "Microsoft.EntityFrameworkCore.Relational": "3.1.1",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "3.1.1"
+        },
+        "compile": {
+          "lib/netstandard2.0/EFCore.NamingConventions.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/EFCore.NamingConventions.dll": {}
+        }
+      },
       "Microsoft.Bcl.AsyncInterfaces/1.1.1": {
         "type": "package",
         "compile": {
@@ -292,6 +306,18 @@
     }
   },
   "libraries": {
+    "EFCore.NamingConventions/1.1.1": {
+      "sha512": "BSQ3zsqVOC8+cX86vTr4UviIqdYXvW0Br8nXfLyXXkkvgfQc8vJzpSxobYxIL15shXsgiYfr2BEJCIVzPBabOg==",
+      "type": "package",
+      "path": "efcore.namingconventions/1.1.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "efcore.namingconventions.1.1.1.nupkg.sha512",
+        "efcore.namingconventions.nuspec",
+        "lib/netstandard2.0/EFCore.NamingConventions.dll"
+      ]
+    },
     "Microsoft.Bcl.AsyncInterfaces/1.1.1": {
       "sha512": "yuvf07qFWFqtK3P/MRkEKLhn5r2UbSpVueRziSqj0yJQIKFwG1pq9mOayK3zE5qZCTs0CbrwL9M6R8VwqyGy2w==",
       "type": "package",
@@ -864,6 +890,7 @@
   },
   "projectFileDependencyGroups": {
     ".NETCoreApp,Version=v3.1": [
+      "EFCore.NamingConventions >= 1.1.1",
       "Microsoft.EntityFrameworkCore.Design >= 3.1.18",
       "Npgsql.EntityFrameworkCore.PostgreSQL >= 3.1.18"
     ]
@@ -907,6 +934,10 @@
       "netcoreapp3.1": {
         "targetAlias": "netcoreapp3.1",
         "dependencies": {
+          "EFCore.NamingConventions": {
+            "target": "Package",
+            "version": "[1.1.1, )"
+          },
           "Microsoft.EntityFrameworkCore.Design": {
             "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
             "suppressParent": "All",

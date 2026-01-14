@@ -1,75 +1,60 @@
-import { useState } from 'react';
-import { Edit3, Save } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Edit3, Save, Loader2 } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { BlockEditor } from './components/BlockEditor';
-import type { MenuItem, DocPage} from './types';
-
-const INITIAL_MENU: MenuItem[] = [
-  { id: 'install', title: 'Opencode 安装说明', type: 'static' },
-  { id: 'usage', title: 'Opencode 使用说明', type: 'static' },
-  { 
-    id: 'cases', 
-    title: 'Opencode 使用案例', 
-    type: 'folder',
-    isOpen: true,
-    children: [
-      { id: 'case-1', title: '电商系统集成', type: 'file' },
-      { id: 'case-2', title: '金融数据处理', type: 'file' },
-    ]
-  }
-];
-
-const MOCK_PAGES: Record<string, DocPage> = {
-  'install': {
-    id: 'install',
-    title: '安装说明',
-    lastUpdated: '2023-10-27',
-    // 之前是 blocks: [...]，现在改为 content: "HTML字符串"
-    content: `
-      <h2>欢迎使用 Opencode</h2>
-      <p>请按照以下步骤完成环境配置。</p>
-      <pre class="ql-syntax" spellcheck="false">npm install opencode-core --save
-dotnet add package Opencode.Net</pre>
-      <p>安装完成后，请确保您的 PostgreSQL 数据库连接正常。</p>
-    `
-  },
-  'usage': {
-    id: 'usage',
-    title: '核心功能使用',
-    lastUpdated: '2023-10-28',
-    content: `
-      <p>Opencode 的核心在于其高效的中间件管道。</p>
-      <img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80" alt="示例图片" />
-      <p>如上图所示，数据流经处理节点。</p>
-    `
-  },
-  'case-1': {
-    id: 'case-1',
-    title: '电商系统集成案例',
-    lastUpdated: '2023-11-01',
-    content: `
-      <p>在高并发电商场景下，Opencode 能够处理每秒 10k+ 请求。</p>
-      <pre class="ql-syntax" spellcheck="false">public void ConfigureServices(IServiceCollection services)
-{
-    services.AddOpencode(options => 
-    {
-        options.UseRedisCache();
-    });
-}</pre>
-    `
-  }
-};
+import type { MenuItem, DocPage } from './types';
+import { docsApi } from './services/api';
 
 function App() {
-  const [activeId, setActiveId] = useState<string>('install');
-  const [menu, setMenu] = useState<MenuItem[]>(INITIAL_MENU);
-  const [pages, setPages] = useState<Record<string, DocPage>>(MOCK_PAGES);
+  const [activeId, setActiveId] = useState<string>('');
+  const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [currentPage, setCurrentPage] = useState<DocPage | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const currentPage = pages[activeId] || { 
-    id: activeId, title: '未命名文档', blocks: [], lastUpdated: new Date().toISOString() 
-  };
+  // 初始化加载菜单
+  useEffect(() => {
+    const loadMenu = async () => {
+      try {
+        const menuData = await docsApi.getMenu();
+        setMenu(menuData);
+        if (menuData.length > 0 && !activeId) {
+            // 默认选中第一个非文件夹节点（递归查找略，这里简单处理）
+            // 实际逻辑中最好选第一个 type='file' 或 'static' 的节点
+             setActiveId(menuData[0].id);
+        }
+      } catch (error) {
+        console.error("Failed to load menu:", error);
+      }
+    };
+    loadMenu();
+  }, []);
+
+  // 加载页面详情
+  useEffect(() => {
+    if (!activeId) return;
+
+    const loadPage = async () => {
+      setIsLoading(true);
+      try {
+        const pageData = await docsApi.getPage(activeId);
+        setCurrentPage(pageData);
+      } catch (error) {
+        console.error("Failed to load page:", error);
+        setCurrentPage({
+            id: activeId,
+            title: '加载失败或页面不存在',
+            content: '',
+            lastUpdated: new Date().toISOString()
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPage();
+  }, [activeId]);
 
   // --- Actions ---
 
@@ -88,72 +73,81 @@ function App() {
     }));
   };
 
-  const addCase = () => {
-    const newId = `case-${Date.now()}`;
-    const newTitle = "新案例";
-    
-    // Update Menu
-    setMenu(prev => prev.map(item => {
-      if (item.id === 'cases') {
-        return {
-          ...item,
-          isOpen: true,
-          children: [...(item.children || []), { id: newId, title: newTitle, type: 'file' }]
-        };
-      }
-      return item;
-    }));
-
-    // Create Empty Page
-    setPages(prev => ({
-      ...prev,
-      [newId]: {
-        id: newId,
-        title: newTitle,
-        lastUpdated: new Date().toISOString(),
-        // 修正：使用 content 字段，并传入初始 HTML
-        content: '<p>在此处开始编写您的案例...</p>' 
-      }
-    }));
-
-    setActiveId(newId);
-    setIsEditing(true);
-  };
-
-  const updateContent = (newContent: string) => {
-    setPages(prev => ({
-      ...prev,
-      [activeId]: { ...currentPage, content: newContent }
-    }));
-  };
-
-
+  // 关键修改 1: 更新本地标题状态
   const updateTitle = (newTitle: string) => {
-     setPages(prev => ({
-      ...prev,
-      [activeId]: { ...currentPage, title: newTitle }
-    }));
-    
-    // Sync with menu title if it's a dynamic case
-    if (activeId.startsWith('case-')) {
-      setMenu(prev => prev.map(item => {
-        if (item.id === 'cases' && item.children) {
-          return {
-            ...item,
-            children: item.children.map(child => 
-              child.id === activeId ? { ...child, title: newTitle } : child
-            )
-          };
-        }
-        return item;
-      }));
+    if (currentPage) {
+        setCurrentPage({ ...currentPage, title: newTitle });
     }
   };
 
-  // --- Renderers ---
-  
-  // ... 其他 handleToggleFolder, handleAddCase, handleUpdateBlock 等逻辑保持不变 ...
-  // 将它们传递给子组件即可
+  // 更新内容
+  const updateContent = (newContent: string) => {
+    if (currentPage) {
+        setCurrentPage({ ...currentPage, content: newContent });
+    }
+  };
+
+  // 关键修改 2: 保存时同步更新菜单标题
+  const handleSave = async () => {
+    if (!currentPage) return;
+    
+    try {
+        // 1. 发送 API 请求保存到后端
+        await docsApi.updatePage(currentPage.id, {
+            title: currentPage.title,
+            content: currentPage.content
+        });
+
+        // 2. 更新左侧菜单的显示标题（递归查找并更新）
+        setMenu(prevMenu => {
+            const updateItem = (items: MenuItem[]): MenuItem[] => {
+                return items.map(item => {
+                    // 找到当前项，更新标题
+                    if (item.id === currentPage.id) {
+                        return { ...item, title: currentPage.title };
+                    }
+                    // 如果有子项，递归更新
+                    if (item.children) {
+                        return { ...item, children: updateItem(item.children) };
+                    }
+                    return item;
+                });
+            };
+            return updateItem(prevMenu);
+        });
+
+        setIsEditing(false);
+    } catch (error) {
+        console.error("Failed to save:", error);
+        alert("保存失败，请检查网络");
+    }
+  };
+
+  const addCase = async () => {
+    const title = "新案例 " + new Date().toLocaleTimeString();
+    try {
+        const newMenuItem = await docsApi.createCase(title);
+        
+        // 更新菜单
+        setMenu(prev => prev.map(item => {
+            if (item.id === 'cases') {
+                return {
+                    ...item,
+                    isOpen: true,
+                    children: [...(item.children || []), newMenuItem]
+                };
+            }
+            return item;
+        }));
+
+        setActiveId(newMenuItem.id);
+        setIsEditing(true); // 自动进入编辑模式，此时标题框可编辑
+    } catch (error) {
+        console.error("Create case failed:", error);
+    }
+  };
+
+  // --- Render ---
 
   return (
     <div className="flex h-screen w-full bg-gray-50 font-sans text-gray-900">
@@ -163,30 +157,62 @@ function App() {
         mobileMenuOpen={mobileMenuOpen}
         onToggleMobile={() => setMobileMenuOpen(!mobileMenuOpen)}
         onSelect={handleSelect}
-        onToggleFolder={toggleFolder} // 需实现
-        onAddCase={addCase} // 需实现
+        onToggleFolder={toggleFolder}
+        onAddCase={addCase}
       />
 
       <main className="flex-1 flex flex-col h-full overflow-hidden mt-16 lg:mt-0 w-full">
-        <header className="h-16 bg-white border-b border-gray-200 px-8 flex items-center justify-between shadow-sm">
-           {/* Header Logic */}
-           <h1 className="text-2xl font-bold">{currentPage.title}</h1>
-           <button 
-             onClick={() => setIsEditing(!isEditing)}
-             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md"
-           >
-             {isEditing ? <Save className="w-4 h-4 mr-2" /> : <Edit3 className="w-4 h-4 mr-2" />}
-             {isEditing ? '保存' : '编辑'}
-           </button>
-        </header>
+        {currentPage ? (
+            <>
+                <header className="h-16 bg-white border-b border-gray-200 px-8 flex items-center justify-between shadow-sm">
+                   
+                   {/* 关键修改 3: 编辑模式下显示输入框，否则显示 H1 */}
+                   <div className="flex-1 mr-4">
+                     {isEditing ? (
+                       <input 
+                         type="text" 
+                         value={currentPage.title}
+                         onChange={(e) => updateTitle(e.target.value)}
+                         className="text-2xl font-bold border-b-2 border-blue-500 focus:outline-none bg-transparent w-full placeholder-gray-300"
+                         placeholder="请输入文档标题"
+                         autoFocus
+                       />
+                     ) : (
+                       <h1 className="text-2xl font-bold truncate" title={currentPage.title}>
+                         {currentPage.title}
+                       </h1>
+                     )}
+                   </div>
 
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8">
-          <BlockEditor 
-            content={currentPage.content} // 传入 HTML 字符串
-            isEditing={isEditing}
-            onUpdate={updateContent}      // 使用新的 updateContent 函数
-          />
-        </div>
+                   <button 
+                     onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+                     className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shrink-0"
+                     disabled={isLoading}
+                   >
+                     {isEditing ? <Save className="w-4 h-4 mr-2" /> : <Edit3 className="w-4 h-4 mr-2" />}
+                     {isEditing ? '保存' : '编辑'}
+                   </button>
+                </header>
+
+                <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+                {isLoading ? (
+                    <div className="flex justify-center items-center h-full text-gray-400">
+                        <Loader2 className="w-8 h-8 animate-spin mr-2"/> 加载中...
+                    </div>
+                ) : (
+                    <BlockEditor 
+                        content={currentPage.content}
+                        isEditing={isEditing}
+                        onUpdate={updateContent}
+                    />
+                )}
+                </div>
+            </>
+        ) : (
+            <div className="flex items-center justify-center h-full text-gray-400">
+                请在左侧选择一个文档
+            </div>
+        )}
       </main>
     </div>
   );

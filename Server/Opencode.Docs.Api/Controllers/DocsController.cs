@@ -12,7 +12,7 @@ using Opencode.Docs.Api.Models;
 namespace Opencode.Docs.Api.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class DocsController : ControllerBase
     {
         private readonly DocsContext _context;
@@ -91,24 +91,46 @@ public async Task<IActionResult> UpdatePage(string id, [FromBody] PageDetailDto 
     return Ok(new { success = true });
 }
 
-// CreateCase 也需要微调初始化逻辑
-[HttpPost("cases")]
-public async Task<IActionResult> CreateCase([FromBody] DocMenuItem newItem)
-{
-    // ... 前面的逻辑不变 ...
-    
-    // 创建一个默认的初始 HTML 块
-    _context.ContentBlocks.Add(new ContentBlock
-    {
-        PageId = newItem.Id,
-        Type = "html",
-        Content = "<p>请在此处开始编写您的案例...</p>", // 默认 HTML
-        OrderIndex = 0
-    });
+        // CreateCase 也需要微调初始化逻辑
+        [HttpPost("cases")]
+        public async Task<IActionResult> CreateCase([FromBody] DocMenuItem newItem)
+        {
+            if (string.IsNullOrEmpty(newItem.Title))
+                return BadRequest("Title is required");
 
-    await _context.SaveChangesAsync();
-    return CreatedAtAction(nameof(GetPage), new { id = newItem.Id }, newItem);
-}
+            newItem.Id = Guid.NewGuid().ToString();
+            newItem.Type = "file";
+            newItem.ParentId = "cases";
+
+            // ...省略排序逻辑...
+            var maxOrder = await _context.MenuItems
+                .Where(x => x.ParentId == "cases")
+                .MaxAsync(x => (int?)x.SortOrder) ?? 0;
+            newItem.SortOrder = maxOrder + 1;
+
+            // --- 修复开始 ---
+
+            // 步骤 A: 先添加菜单项并立即保存
+            // 这样该 ID 就真实存在于数据库中了
+            _context.MenuItems.Add(newItem);
+            await _context.SaveChangesAsync();
+
+            // 步骤 B: 再添加依赖该 ID 的内容块
+            _context.ContentBlocks.Add(new ContentBlock
+            {
+                PageId = newItem.Id, // 现在数据库里肯定有这个 ID 了，不会报错
+                Type = "html",
+                Content = "<p>请在此处开始编写您的案例...</p>",
+                OrderIndex = 0
+            });
+
+            // 步骤 C: 保存内容块
+            await _context.SaveChangesAsync();
+
+            // --- 修复结束 ---
+
+            return CreatedAtAction(nameof(GetPage), new { id = newItem.Id }, newItem);
+        }
 
 
 

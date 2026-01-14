@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Opencode.Docs.Api.Models
 {
@@ -15,7 +16,10 @@ namespace Opencode.Docs.Api.Models
         // "text", "image", "code"
         [Required]
         public string Type { get; set; }
-        
+        // --- 新增：定义导航属性 ---
+        [ForeignKey("PageId")]
+        public DocMenuItem Page { get; set; }
+
         public string Content { get; set; }
         
         public string Language { get; set; } // 仅用于 code 类型
